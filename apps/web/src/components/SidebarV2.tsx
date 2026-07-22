@@ -1247,10 +1247,15 @@ export default function SidebarV2() {
           ),
         );
         if (clicked._tag === "Failure" || clicked.value !== "remove") return;
-        const projectThreadCount = threads.filter(
+        // Snapshot the project's threads before deletion: force-removal wipes
+        // them server-side without routing through the per-thread delete path,
+        // so their composer drafts (prompt text + persisted image attachments)
+        // must be cleared here or they orphan in localStorage forever.
+        const projectThreads = threads.filter(
           (thread) =>
             thread.environmentId === project.environmentId && thread.projectId === project.id,
-        ).length;
+        );
+        const projectThreadCount = projectThreads.length;
         const environmentLabel =
           environments.length > 1
             ? (environmentLabelById.get(project.environmentId) ?? null)
@@ -1302,6 +1307,9 @@ export default function SidebarV2() {
         }
         const projectRef = scopeProjectRef(project.environmentId, project.id);
         const draftStore = useComposerDraftStore.getState();
+        for (const thread of projectThreads) {
+          draftStore.clearDraftThread(scopeThreadRef(thread.environmentId, thread.id));
+        }
         const projectDraftThread = draftStore.getDraftThreadByProjectRef(projectRef);
         if (projectDraftThread) {
           draftStore.clearDraftThread(projectDraftThread.draftId);
